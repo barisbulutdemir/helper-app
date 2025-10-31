@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+/* Touch scroll desteği (mobil için) */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none;  /* IE ve Edge için scrollbar gizle */
+  scrollbar-width: none;  /* Firefox için scrollbar gizle */
+  cursor: grab;
+}
+
+.touch-scroll:active {
+  cursor: grabbing;
+  scroll-behavior: auto; /* Drag sırasında smooth animasyon olmasın */
+}
+
+/* Webkit tarayıcılar için scrollbar gizle */
+.touch-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Not kartlarında HTML içeriğini sınırla */
+.note-preview {
+  max-height: 3.75rem;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.note-preview * {
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  max-width: 100%;
+}
+
+.note-preview font {
+  font-size: 0.875rem !important;
+}
+
+.note-preview ul,
+.note-preview ol {
+  margin-left: 1rem !important;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.note-preview div.code-block {
+  font-size: 0.75rem !important;
+  padding: 0.25rem 0.5rem !important;
+  margin: 0.25rem 0 !important;
+  max-height: 2rem !important;
+  overflow: hidden !important;
+}
+
+/* Makine rehberi kartlarında da aynı */
+.guide-preview {
+  max-height: 3.75rem;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.guide-preview * {
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  max-width: 100%;
+}
+
+.guide-preview font {
+  font-size: 0.875rem !important;
+}
+
+.guide-preview ul,
+.guide-preview ol {
+  margin-left: 1rem !important;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.guide-preview div.code-block {
+  font-size: 0.75rem !important;
+  padding: 0.25rem 0.5rem !important;
+  margin: 0.25rem 0 !important;
+  max-height: 2rem !important;
+  overflow: hidden !important;
+}
+
+/* Rich Text Editor - Liste Stilleri */
+.editor-content ul {
+  list-style-type: disc;
+  margin-left: 30px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding-left: 10px;
+}
+
+.editor-content ol {
+  list-style-type: decimal;
+  margin-left: 30px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding-left: 10px;
+}
+
+.editor-content li {
+  margin-bottom: 5px;
+  padding-left: 5px;
+}
+
+.editor-content ul ul {
+  margin-left: 20px;
+}
+
+.editor-content ol ol {
+  margin-left: 20px;
+}
+
+/* Kod Snippet Stilleri - Block Level (Çok Satırlı) */
+.editor-content div.code-block,
+.note-preview div.code-block,
+.guide-preview div.code-block {
+  background-color: #1e293b;
+  border: 2px solid #475569;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.95em;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  display: block;
+  min-height: 40px;
+}
