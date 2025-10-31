@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { apiFetch } from '../utils/api';
 
 function Settings() {
   const [activeSection, setActiveSection] = useState('general');
@@ -41,7 +40,7 @@ function Settings() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/settings`);
+      const response = await apiFetch('/api/settings');
       const data = await response.json();
       setSettings(data);
     } catch (error) {
@@ -51,7 +50,7 @@ function Settings() {
 
   const fetchBannedIPs = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/banned-ips`);
+      const response = await apiFetch('/api/banned-ips');
       const data = await response.json();
       setBannedIPs(data);
     } catch (error) {
@@ -61,7 +60,7 @@ function Settings() {
 
   const fetchPhotoCategories = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/photo-categories`);
+      const response = await apiFetch('/api/photo-categories');
       const data = await response.json();
       setPhotoCategories(data);
     } catch (error) {
@@ -78,7 +77,7 @@ function Settings() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/photo-categories/${id}`, { 
+      const response = await apiFetch(`/api/photo-categories/${id}`, { 
         method: 'DELETE' 
       });
 
@@ -112,9 +111,8 @@ function Settings() {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await fetch(`${API_URL}/api/settings`, {
+      const response = await apiFetch('/api/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
       });
 
@@ -145,9 +143,8 @@ function Settings() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/change-password`, {
+      const response = await apiFetch('/api/auth/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           oldPassword: passwordForm.oldPassword,
           newPassword: passwordForm.newPassword
@@ -175,9 +172,8 @@ function Settings() {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await fetch(`${API_URL}/api/banned-ips`, {
+      const response = await apiFetch('/api/banned-ips', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBanForm)
       });
 
@@ -201,7 +197,7 @@ function Settings() {
     if (!confirm('Bu IP\'nin banını kaldırmak istediğinize emin misiniz?')) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/banned-ips/${id}`, {
+      const response = await apiFetch(`/api/banned-ips/${id}`, {
         method: 'DELETE'
       });
 

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import RichTextEditor from './RichTextEditor';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { apiFetch } from '../utils/api';
 
 function MachineGuide() {
   const [guides, setGuides] = useState([]);
@@ -36,16 +35,14 @@ function MachineGuide() {
         
         if (editingGuide) {
           // Mevcut rehber - güncelle
-          await fetch(`${API_URL}/api/machine-guide/${editingGuide.id}`, {
+          await apiFetch(`/api/machine-guide/${editingGuide.id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dataToSend)
           });
         } else {
           // Yeni rehber - oluştur ve ID'yi kaydet
-          const response = await fetch(`${API_URL}/api/machine-guide`, {
+          const response = await apiFetch('/api/machine-guide', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dataToSend)
           });
           
@@ -71,7 +68,7 @@ function MachineGuide() {
 
   const fetchGuides = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/machine-guide`);
+      const response = await apiFetch('/api/machine-guide');
       const data = await response.json();
       setGuides(data);
     } catch (error) {
@@ -90,9 +87,8 @@ function MachineGuide() {
     
     try {
       if (editingGuide) {
-        const response = await fetch(`${API_URL}/api/machine-guide/${editingGuide.id}`, {
+        const response = await apiFetch(`/api/machine-guide/${editingGuide.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dataToSend)
         });
         
@@ -102,9 +98,8 @@ function MachineGuide() {
         
         console.log('✅ Rehber güncellendi');
       } else {
-        const response = await fetch(`${API_URL}/api/machine-guide`, {
+        const response = await apiFetch('/api/machine-guide', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dataToSend)
         });
         
@@ -126,7 +121,7 @@ function MachineGuide() {
   const handleDelete = async (id) => {
     if (confirm('Bu rehberi silmek istediğinize emin misiniz?')) {
       try {
-        await fetch(`${API_URL}/api/machine-guide/${id}`, { method: 'DELETE' });
+        await apiFetch(`/api/machine-guide/${id}`, { method: 'DELETE' });
         fetchGuides();
         if (editingGuide?.id === id) {
           closeModal();

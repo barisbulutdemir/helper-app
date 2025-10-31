@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { apiFetch, API_URL } from '../utils/api';
 
 function PhotoGallery() {
   const [categories, setCategories] = useState([]);
@@ -29,7 +28,7 @@ function PhotoGallery() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/photo-categories`);
+      const response = await apiFetch('/api/photo-categories');
       const data = await response.json();
       setCategories(data);
     } catch (error) {
@@ -39,7 +38,7 @@ function PhotoGallery() {
 
   const fetchPhotos = async (categoryId) => {
     try {
-      const response = await fetch(`${API_URL}/api/photos?category_id=${categoryId}`);
+      const response = await apiFetch(`/api/photos?category_id=${categoryId}`);
       const data = await response.json();
       setPhotos(data);
     } catch (error) {
@@ -50,9 +49,8 @@ function PhotoGallery() {
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     try {
-      await fetch(`${API_URL}/api/photo-categories`, {
+      await apiFetch('/api/photo-categories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newCategoryName, parent_id: parentCategoryId })
       });
       setNewCategoryName('');
@@ -78,7 +76,7 @@ function PhotoGallery() {
         formData.append('file', file);
         formData.append('category_id', selectedCategory);
 
-        await fetch(`${API_URL}/api/photos/upload`, {
+        await apiFetch('/api/photos/upload', {
           method: 'POST',
           body: formData
         });
@@ -97,7 +95,7 @@ function PhotoGallery() {
   const handleDeletePhoto = async (id) => {
     if (confirm('Bu fotoğrafı silmek istediğinize emin misiniz?')) {
       try {
-        await fetch(`${API_URL}/api/photos/${id}`, { method: 'DELETE' });
+        await apiFetch(`/api/photos/${id}`, { method: 'DELETE' });
         fetchPhotos(selectedCategory);
         setSelectedPhoto(null);
       } catch (error) {
@@ -112,7 +110,7 @@ function PhotoGallery() {
     if (confirm(`${selectedPhotos.length} fotoğrafı silmek istediğinize emin misiniz?`)) {
       try {
         for (const photoId of selectedPhotos) {
-          await fetch(`${API_URL}/api/photos/${photoId}`, { method: 'DELETE' });
+          await apiFetch(`/api/photos/${photoId}`, { method: 'DELETE' });
         }
         fetchPhotos(selectedCategory);
         setSelectedPhotos([]);
@@ -199,9 +197,8 @@ function PhotoGallery() {
 
   const handleUpdateDescription = async (id, description) => {
     try {
-      await fetch(`${API_URL}/api/photos/${id}`, {
+      await apiFetch(`/api/photos/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description })
       });
       fetchPhotos(selectedCategory);

@@ -11,6 +11,7 @@ services:
     environment:
       - PORT=3001
       - NODE_ENV=production
+      - JWT_SECRET=change-this-secret-key-to-something-random-and-secure-minimum-32-characters-long
     networks:
       - helper-network
 

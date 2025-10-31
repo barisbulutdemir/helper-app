@@ -1,6 +1,5 @@
 import { useState } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { setToken } from '../utils/api';
 
 function Login({ onLogin }) {
   const [password, setPassword] = useState('');
@@ -13,6 +12,7 @@ function Login({ onLogin }) {
     setError('');
 
     try {
+      const API_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -21,7 +21,10 @@ function Login({ onLogin }) {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.token) {
+        // Token'ı kaydet
+        setToken(data.token);
+        localStorage.setItem('auth', 'true');
         onLogin();
       } else {
         setError(data.error || 'Giriş başarısız');

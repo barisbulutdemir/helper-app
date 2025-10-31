@@ -9,6 +9,7 @@ import { dirname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import db from './database.js';
 import { checkBannedIP, trackLoginAttempt, logLoginAttempt, getClientIP } from './middleware/security.js';
+import { authenticateToken, generateToken } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -113,7 +114,9 @@ app.post('/api/auth/login', checkBannedIP, trackLoginAttempt, async (req, res) =
     const valid = await bcrypt.compare(password, auth.password_hash);
     if (valid) {
       logLoginAttempt(clientIP, true);
-      res.json({ success: true });
+      // JWT token oluştur
+      const token = generateToken({ id: 1, authenticated: true });
+      res.json({ success: true, token });
     } else {
       logLoginAttempt(clientIP, false);
       res.status(401).json({ error: 'Yanlış şifre' });
@@ -123,7 +126,7 @@ app.post('/api/auth/login', checkBannedIP, trackLoginAttempt, async (req, res) =
   }
 });
 
-app.post('/api/auth/change-password', async (req, res) => {
+app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
     
@@ -157,7 +160,7 @@ app.get('/api/settings', (req, res) => {
   }
 });
 
-app.put('/api/settings', (req, res) => {
+app.put('/api/settings', authenticateToken, (req, res) => {
   try {
     const { site_title, max_login_attempts, ban_duration_hours } = req.body;
     
@@ -171,7 +174,7 @@ app.put('/api/settings', (req, res) => {
 });
 
 // ================== BANNED IPS ==================
-app.get('/api/banned-ips', (req, res) => {
+app.get('/api/banned-ips', authenticateToken, (req, res) => {
   try {
     const bannedIPs = db.prepare('SELECT * FROM banned_ips ORDER BY banned_at DESC').all();
     res.json(bannedIPs);
@@ -180,7 +183,7 @@ app.get('/api/banned-ips', (req, res) => {
   }
 });
 
-app.post('/api/banned-ips', (req, res) => {
+app.post('/api/banned-ips', authenticateToken, (req, res) => {
   try {
     const { ip_address, ban_reason, permanent } = req.body;
     
@@ -203,7 +206,7 @@ app.post('/api/banned-ips', (req, res) => {
   }
 });
 
-app.delete('/api/banned-ips/:id', (req, res) => {
+app.delete('/api/banned-ips/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM banned_ips WHERE id = ?').run(req.params.id);
     res.json({ success: true });
@@ -213,7 +216,7 @@ app.delete('/api/banned-ips/:id', (req, res) => {
 });
 
 // ================== LOGIN ATTEMPTS ==================
-app.get('/api/login-attempts', (req, res) => {
+app.get('/api/login-attempts', authenticateToken, (req, res) => {
   try {
     const attempts = db.prepare('SELECT * FROM login_attempts ORDER BY attempt_time DESC LIMIT 100').all();
     res.json(attempts);
@@ -223,7 +226,7 @@ app.get('/api/login-attempts', (req, res) => {
 });
 
 // ================== NOT KATEGORİLERİ ==================
-app.get('/api/note-categories', (req, res) => {
+app.get('/api/note-categories', authenticateToken, (req, res) => {
   try {
     const categories = db.prepare('SELECT * FROM note_categories ORDER BY created_at DESC').all();
     res.json(categories);
@@ -232,7 +235,7 @@ app.get('/api/note-categories', (req, res) => {
   }
 });
 
-app.post('/api/note-categories', (req, res) => {
+app.post('/api/note-categories', authenticateToken, (req, res) => {
   try {
     const { name, color } = req.body;
     const result = db.prepare('INSERT INTO note_categories (name, color) VALUES (?, ?)').run(name, color || '#3B82F6');
@@ -242,7 +245,7 @@ app.post('/api/note-categories', (req, res) => {
   }
 });
 
-app.delete('/api/note-categories/:id', (req, res) => {
+app.delete('/api/note-categories/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM note_categories WHERE id = ?').run(req.params.id);
     res.json({ success: true });
@@ -252,7 +255,7 @@ app.delete('/api/note-categories/:id', (req, res) => {
 });
 
 // ================== NOTLAR ==================
-app.get('/api/notes', (req, res) => {
+app.get('/api/notes', authenticateToken, (req, res) => {
   try {
     const notes = db.prepare('SELECT * FROM notes ORDER BY updated_at DESC').all();
     res.json(notes);
@@ -261,7 +264,7 @@ app.get('/api/notes', (req, res) => {
   }
 });
 
-app.post('/api/notes', (req, res) => {
+app.post('/api/notes', authenticateToken, (req, res) => {
   try {
     const { title, content, category_id } = req.body;
     const result = db.prepare('INSERT INTO notes (title, content, category_id) VALUES (?, ?, ?)').run(title, content, category_id || null);
@@ -271,7 +274,7 @@ app.post('/api/notes', (req, res) => {
   }
 });
 
-app.put('/api/notes/:id', (req, res) => {
+app.put('/api/notes/:id', authenticateToken, (req, res) => {
   try {
     const { title, content, category_id } = req.body;
     db.prepare('UPDATE notes SET title = ?, content = ?, category_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
@@ -282,7 +285,7 @@ app.put('/api/notes/:id', (req, res) => {
   }
 });
 
-app.delete('/api/notes/:id', (req, res) => {
+app.delete('/api/notes/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM notes WHERE id = ?').run(req.params.id);
     res.json({ success: true });
@@ -292,7 +295,7 @@ app.delete('/api/notes/:id', (req, res) => {
 });
 
 // ================== TODO KATEGORİLERİ ==================
-app.get('/api/todo-categories', (req, res) => {
+app.get('/api/todo-categories', authenticateToken, (req, res) => {
   try {
     const categories = db.prepare('SELECT * FROM todo_categories ORDER BY created_at DESC').all();
     res.json(categories);
@@ -301,7 +304,7 @@ app.get('/api/todo-categories', (req, res) => {
   }
 });
 
-app.post('/api/todo-categories', (req, res) => {
+app.post('/api/todo-categories', authenticateToken, (req, res) => {
   try {
     const { name, color } = req.body;
     const result = db.prepare('INSERT INTO todo_categories (name, color) VALUES (?, ?)').run(name, color || '#3B82F6');
@@ -311,7 +314,7 @@ app.post('/api/todo-categories', (req, res) => {
   }
 });
 
-app.delete('/api/todo-categories/:id', (req, res) => {
+app.delete('/api/todo-categories/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM todo_categories WHERE id = ?').run(req.params.id);
     res.json({ success: true });
@@ -321,7 +324,7 @@ app.delete('/api/todo-categories/:id', (req, res) => {
 });
 
 // ================== TODO LİSTESİ ==================
-app.get('/api/todos', (req, res) => {
+app.get('/api/todos', authenticateToken, (req, res) => {
   try {
     const { category_id } = req.query;
     let todos;
@@ -338,7 +341,7 @@ app.get('/api/todos', (req, res) => {
   }
 });
 
-app.post('/api/todos', (req, res) => {
+app.post('/api/todos', authenticateToken, (req, res) => {
   try {
     const { task, category_id } = req.body;
     const result = db.prepare('INSERT INTO todos (task, category_id) VALUES (?, ?)').run(task, category_id || null);
@@ -348,7 +351,7 @@ app.post('/api/todos', (req, res) => {
   }
 });
 
-app.put('/api/todos/:id', (req, res) => {
+app.put('/api/todos/:id', authenticateToken, (req, res) => {
   try {
     const { completed } = req.body;
     db.prepare('UPDATE todos SET completed = ? WHERE id = ?').run(completed, req.params.id);
@@ -358,7 +361,7 @@ app.put('/api/todos/:id', (req, res) => {
   }
 });
 
-app.delete('/api/todos/:id', (req, res) => {
+app.delete('/api/todos/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM todos WHERE id = ?').run(req.params.id);
     res.json({ success: true });
@@ -368,7 +371,7 @@ app.delete('/api/todos/:id', (req, res) => {
 });
 
 // ================== DÖKÜMANLAR ==================
-app.get('/api/documents', (req, res) => {
+app.get('/api/documents', authenticateToken, (req, res) => {
   try {
     const docs = db.prepare('SELECT * FROM documents ORDER BY created_at DESC').all();
     res.json(docs);
@@ -377,7 +380,7 @@ app.get('/api/documents', (req, res) => {
   }
 });
 
-app.post('/api/documents/upload', upload.single('file'), (req, res) => {
+app.post('/api/documents/upload', authenticateToken, upload.single('file'), (req, res) => {
   try {
     const file = req.file;
     const result = db.prepare(
@@ -390,7 +393,7 @@ app.post('/api/documents/upload', upload.single('file'), (req, res) => {
   }
 });
 
-app.delete('/api/documents/:id', (req, res) => {
+app.delete('/api/documents/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM documents WHERE id = ?').run(req.params.id);
     res.json({ success: true });
@@ -400,7 +403,7 @@ app.delete('/api/documents/:id', (req, res) => {
 });
 
 // ================== FOTOĞRAF KATEGORİLERİ ==================
-app.get('/api/photo-categories', (req, res) => {
+app.get('/api/photo-categories', authenticateToken, (req, res) => {
   try {
     const categories = db.prepare('SELECT * FROM photo_categories ORDER BY created_at DESC').all();
     res.json(categories);
@@ -409,7 +412,7 @@ app.get('/api/photo-categories', (req, res) => {
   }
 });
 
-app.post('/api/photo-categories', (req, res) => {
+app.post('/api/photo-categories', authenticateToken, (req, res) => {
   try {
     const { name, parent_id } = req.body;
     const result = db.prepare('INSERT INTO photo_categories (name, parent_id) VALUES (?, ?)').run(name, parent_id || null);
@@ -419,7 +422,7 @@ app.post('/api/photo-categories', (req, res) => {
   }
 });
 
-app.delete('/api/photo-categories/:id', (req, res) => {
+app.delete('/api/photo-categories/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM photo_categories WHERE id = ?').run(req.params.id);
     res.json({ success: true });
@@ -429,7 +432,7 @@ app.delete('/api/photo-categories/:id', (req, res) => {
 });
 
 // ================== FOTOĞRAFLAR ==================
-app.get('/api/photos', (req, res) => {
+app.get('/api/photos', authenticateToken, (req, res) => {
   try {
     const { category_id } = req.query;
     let photos;
@@ -446,7 +449,7 @@ app.get('/api/photos', (req, res) => {
   }
 });
 
-app.post('/api/photos/upload', upload.single('file'), (req, res) => {
+app.post('/api/photos/upload', authenticateToken, upload.single('file'), (req, res) => {
   try {
     const file = req.file;
     const { category_id, description } = req.body;
@@ -461,7 +464,7 @@ app.post('/api/photos/upload', upload.single('file'), (req, res) => {
   }
 });
 
-app.put('/api/photos/:id', (req, res) => {
+app.put('/api/photos/:id', authenticateToken, (req, res) => {
   try {
     const { description } = req.body;
     db.prepare('UPDATE photos SET description = ? WHERE id = ?').run(description, req.params.id);
@@ -471,7 +474,7 @@ app.put('/api/photos/:id', (req, res) => {
   }
 });
 
-app.delete('/api/photos/:id', (req, res) => {
+app.delete('/api/photos/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM photos WHERE id = ?').run(req.params.id);
     res.json({ success: true });
@@ -481,7 +484,7 @@ app.delete('/api/photos/:id', (req, res) => {
 });
 
 // ================== MAKİNA REHBERİ ==================
-app.get('/api/machine-guide', (req, res) => {
+app.get('/api/machine-guide', authenticateToken, (req, res) => {
   try {
     const guides = db.prepare('SELECT * FROM machine_guide ORDER BY updated_at DESC').all();
     res.json(guides);
@@ -490,7 +493,7 @@ app.get('/api/machine-guide', (req, res) => {
   }
 });
 
-app.post('/api/machine-guide', (req, res) => {
+app.post('/api/machine-guide', authenticateToken, (req, res) => {
   try {
     const { title, problem, solution } = req.body;
     const result = db.prepare('INSERT INTO machine_guide (title, problem, solution) VALUES (?, ?, ?)').run(title, problem, solution);
@@ -500,7 +503,7 @@ app.post('/api/machine-guide', (req, res) => {
   }
 });
 
-app.put('/api/machine-guide/:id', (req, res) => {
+app.put('/api/machine-guide/:id', authenticateToken, (req, res) => {
   try {
     const { title, problem, solution } = req.body;
     db.prepare('UPDATE machine_guide SET title = ?, problem = ?, solution = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
@@ -511,7 +514,7 @@ app.put('/api/machine-guide/:id', (req, res) => {
   }
 });
 
-app.delete('/api/machine-guide/:id', (req, res) => {
+app.delete('/api/machine-guide/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM machine_guide WHERE id = ?').run(req.params.id);
     res.json({ success: true });

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import RichTextEditor from './RichTextEditor';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { apiFetch, API_URL } from '../utils/api';
 
 function NotesSection() {
   const [notes, setNotes] = useState([]);
@@ -37,16 +36,14 @@ function NotesSection() {
       try {
         if (editId) {
           // Mevcut not - güncelle
-          await fetch(`${API_URL}/api/notes/${editId}`, {
+          await apiFetch(`/api/notes/${editId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, content, category_id: categoryId })
           });
         } else {
           // Yeni not - oluştur ve ID'yi kaydet
-          const response = await fetch(`${API_URL}/api/notes`, {
+          const response = await apiFetch('/api/notes', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, content, category_id: categoryId })
           });
           
@@ -72,7 +69,7 @@ function NotesSection() {
 
   const fetchNotes = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/notes`);
+      const response = await apiFetch('/api/notes');
       const data = await response.json();
       setNotes(data);
     } catch (error) {
@@ -82,7 +79,7 @@ function NotesSection() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/note-categories`);
+      const response = await apiFetch('/api/note-categories');
       const data = await response.json();
       setCategories(data);
     } catch (error) {
@@ -95,15 +92,13 @@ function NotesSection() {
     
     try {
       if (editId) {
-        await fetch(`${API_URL}/api/notes/${editId}`, {
+        await apiFetch(`/api/notes/${editId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, content, category_id: categoryId })
         });
       } else {
-        await fetch(`${API_URL}/api/notes`, {
+        await apiFetch('/api/notes', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, content, category_id: categoryId })
         });
       }
@@ -143,7 +138,7 @@ function NotesSection() {
   const handleDelete = async (id) => {
     if (confirm('Bu notu silmek istediğinize emin misiniz?')) {
       try {
-        await fetch(`${API_URL}/api/notes/${id}`, { method: 'DELETE' });
+        await apiFetch(`/api/notes/${id}`, { method: 'DELETE' });
         fetchNotes();
       } catch (error) {
         console.error('Not silinemedi:', error);
@@ -154,9 +149,8 @@ function NotesSection() {
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     try {
-      await fetch(`${API_URL}/api/note-categories`, {
+      await apiFetch('/api/note-categories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newCategoryName, color: newCategoryColor })
       });
       setNewCategoryName('');
@@ -170,7 +164,7 @@ function NotesSection() {
   const handleDeleteCategory = async (id) => {
     if (confirm('Bu kategoriyi silmek istediğinize emin misiniz? (Notlar korunacak)')) {
       try {
-        await fetch(`${API_URL}/api/note-categories/${id}`, { method: 'DELETE' });
+        await apiFetch(`/api/note-categories/${id}`, { method: 'DELETE' });
         fetchCategories();
         fetchNotes();
       } catch (error) {

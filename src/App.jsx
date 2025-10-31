@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import { getToken, removeToken } from './utils/api';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Session kontrolü (localStorage)
+    // Session kontrolü (token ve auth flag)
     const auth = localStorage.getItem('auth');
-    if (auth === 'true') {
+    const token = getToken();
+    if (auth === 'true' && token) {
       setIsAuthenticated(true);
+    } else {
+      // Token yoksa temizle
+      if (auth === 'true') {
+        localStorage.removeItem('auth');
+        removeToken();
+      }
     }
   }, []);
 
@@ -21,6 +29,7 @@ function App() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('auth');
+    removeToken();
   };
 
   return (

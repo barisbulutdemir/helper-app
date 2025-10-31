@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { apiFetch } from '../utils/api';
 
 function TodoSection() {
   const [categories, setCategories] = useState([]);
@@ -21,7 +20,7 @@ function TodoSection() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/todo-categories`);
+      const response = await apiFetch('/api/todo-categories');
       const data = await response.json();
       setCategories(data);
     } catch (error) {
@@ -32,9 +31,9 @@ function TodoSection() {
   const fetchTodos = async (categoryId = null) => {
     try {
       const url = categoryId 
-        ? `${API_URL}/api/todos?category_id=${categoryId}`
-        : `${API_URL}/api/todos`;
-      const response = await fetch(url);
+        ? `/api/todos?category_id=${categoryId}`
+        : '/api/todos';
+      const response = await apiFetch(url);
       const data = await response.json();
       setTodos(data);
     } catch (error) {
@@ -45,9 +44,8 @@ function TodoSection() {
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     try {
-      await fetch(`${API_URL}/api/todo-categories`, {
+      await apiFetch('/api/todo-categories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newCategoryName })
       });
       setNewCategoryName('');
@@ -61,7 +59,7 @@ function TodoSection() {
   const handleDeleteCategory = async (id) => {
     if (confirm('Bu kategoriyi ve içindeki tüm görevleri silmek istediğinize emin misiniz?')) {
       try {
-        await fetch(`${API_URL}/api/todo-categories/${id}`, { method: 'DELETE' });
+        await apiFetch(`/api/todo-categories/${id}`, { method: 'DELETE' });
         fetchCategories();
         if (selectedCategory === id) {
           setSelectedCategory(null);
@@ -76,9 +74,8 @@ function TodoSection() {
     e.preventDefault();
     
     try {
-      await fetch(`${API_URL}/api/todos`, {
+      await apiFetch('/api/todos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task, category_id: selectedCategory })
       });
       
@@ -91,9 +88,8 @@ function TodoSection() {
 
   const toggleComplete = async (id, completed) => {
     try {
-      await fetch(`${API_URL}/api/todos/${id}`, {
+      await apiFetch(`/api/todos/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed: completed ? 0 : 1 })
       });
       fetchTodos();
@@ -104,7 +100,7 @@ function TodoSection() {
 
   const handleDelete = async (id) => {
     try {
-      await fetch(`${API_URL}/api/todos/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/todos/${id}`, { method: 'DELETE' });
       fetchTodos();
     } catch (error) {
       console.error('Görev silinemedi:', error);

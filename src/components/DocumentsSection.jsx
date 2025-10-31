@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
+import { apiFetch, API_URL } from '../utils/api';
 
 function DocumentsSection() {
   const [documents, setDocuments] = useState([]);
@@ -12,7 +11,7 @@ function DocumentsSection() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/documents`);
+      const response = await apiFetch('/api/documents');
       const data = await response.json();
       setDocuments(data);
     } catch (error) {
@@ -29,7 +28,7 @@ function DocumentsSection() {
 
     setUploading(true);
     try {
-      await fetch(`${API_URL}/api/documents/upload`, {
+      await apiFetch('/api/documents/upload', {
         method: 'POST',
         body: formData
       });
@@ -45,7 +44,7 @@ function DocumentsSection() {
   const handleDelete = async (id) => {
     if (confirm('Bu dökümanı silmek istediğinize emin misiniz?')) {
       try {
-        await fetch(`${API_URL}/api/documents/${id}`, { method: 'DELETE' });
+        await apiFetch(`/api/documents/${id}`, { method: 'DELETE' });
         fetchDocuments();
       } catch (error) {
         console.error('Döküman silinemedi:', error);
