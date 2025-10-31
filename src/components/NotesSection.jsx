@@ -216,20 +216,21 @@ function NotesSection() {
       </div>
 
       {/* Arama ve Filtreleme */}
-      <div className="mb-6 flex gap-4">
+      <div className="mb-6 flex gap-2 sm:gap-4">
         <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Not ara..."
-          className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 px-2 sm:px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
         />
         <select
           value={selectedCategoryFilter || ''}
           onChange={(e) => setSelectedCategoryFilter(e.target.value ? parseInt(e.target.value) : null)}
-          className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-2 sm:px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base min-w-[100px] sm:min-w-[150px]"
+          title="Kategori filtresi"
         >
-          <option value="">Tüm Kategoriler</option>
+          <option value="">Tüm Kat.</option>
           {categories.map(cat => (
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
@@ -376,28 +377,33 @@ function NotesSection() {
             {/* Modal Body */}
             <div className="flex-1 overflow-auto p-4">
               <form onSubmit={handleCreateCategory} className="mb-4">
-                <div className="flex gap-2 mb-2">
+                <div className="space-y-3">
                   <input
                     type="text"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     placeholder="Yeni kategori adı"
-                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
-                  <input
-                    type="color"
-                    value={newCategoryColor}
-                    onChange={(e) => setNewCategoryColor(e.target.value)}
-                    className="w-12 h-10 border rounded-lg cursor-pointer"
-                    title="Kategori rengi seçin"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
-                  >
-                    + Ekle
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                      Renk:
+                    </label>
+                    <input
+                      type="color"
+                      value={newCategoryColor}
+                      onChange={(e) => setNewCategoryColor(e.target.value)}
+                      className="w-16 h-10 border rounded-lg cursor-pointer"
+                      title="Kategori rengi seçin"
+                    />
+                    <button
+                      type="submit"
+                      className="ml-auto bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
+                    >
+                      + Ekle
+                    </button>
+                  </div>
                 </div>
               </form>
 
