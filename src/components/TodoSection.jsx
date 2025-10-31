@@ -8,6 +8,7 @@ function TodoSection() {
   const [task, setTask] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -50,6 +51,7 @@ function TodoSection() {
         body: JSON.stringify({ name: newCategoryName })
       });
       setNewCategoryName('');
+      setShowCategoryModal(false);
       fetchCategories();
     } catch (error) {
       console.error('Kategori oluşturulamadı:', error);
@@ -121,7 +123,16 @@ function TodoSection() {
         {/* Sol Sidebar - Kategoriler */}
         <div className="md:col-span-1">
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-bold mb-3">Kategoriler</h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold">Kategoriler</h3>
+              <button
+                onClick={() => setShowCategoryModal(true)}
+                className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs sm:text-sm"
+                title="Yeni kategori ekle"
+              >
+                +
+              </button>
+            </div>
             
             <button
               onClick={() => setSelectedCategory(null)}
@@ -150,23 +161,6 @@ function TodoSection() {
                 </button>
               </div>
             ))}
-
-            <form onSubmit={handleCreateCategory} className="mt-4">
-              <input
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Yeni kategori"
-                className="w-full px-3 py-2 border rounded-lg text-sm mb-2"
-                required
-              />
-              <button
-                type="submit"
-                className="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm"
-              >
-                + Kategori Ekle
-              </button>
-            </form>
           </div>
         </div>
 
@@ -227,6 +221,55 @@ function TodoSection() {
           </div>
         </div>
       </div>
+
+      {/* Kategori Ekleme Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-xl font-bold">Yeni Kategori Ekle</h3>
+              <button
+                onClick={() => {
+                  setShowCategoryModal(false);
+                  setNewCategoryName('');
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleCreateCategory} className="flex-1 overflow-auto p-4">
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Yeni kategori adı"
+                className="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCategoryModal(false);
+                    setNewCategoryName('');
+                  }}
+                  className="flex-1 bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
+                >
+                  Kategori Ekle
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
