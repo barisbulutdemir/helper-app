@@ -4,7 +4,7 @@
 .touch-scroll {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
-  scroll-behavior: smooth;
+  scroll-behavior: auto; /* Animasyon yok, anında kaydırma */
   -ms-overflow-style: none;  /* IE ve Edge için scrollbar gizle */
   scrollbar-width: none;  /* Firefox için scrollbar gizle */
   cursor: grab;
@@ -84,6 +84,17 @@
   margin: 0.25rem 0 !important;
   max-height: 2rem !important;
   overflow: hidden !important;
+}
+
+/* Mobil responsive - overflow önleme */
+body, html {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+* {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Rich Text Editor - Liste Stilleri */

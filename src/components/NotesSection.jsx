@@ -197,20 +197,20 @@ function NotesSection() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Notlar</h2>
-        <div className="flex gap-2">
+      <div className="flex justify-between items-center mb-4 sm:mb-6 gap-2">
+        <h2 className="text-xl sm:text-2xl font-bold">Notlar</h2>
+        <div className="flex gap-1 sm:gap-2">
           <button
             onClick={() => setShowCategoryModal(true)}
-            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition flex items-center gap-2"
+            className="bg-gray-500 hover:bg-gray-600 text-white px-2 sm:px-4 md:px-6 py-1 sm:py-2 rounded text-xs sm:text-sm md:text-base transition flex items-center gap-1"
           >
-            <span className="text-xl">📁</span> Kategoriler
+            <span className="text-base sm:text-xl">📁</span> <span className="hidden sm:inline">Kategoriler</span>
           </button>
           <button
             onClick={() => openModal()}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition flex items-center gap-2"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-2 sm:px-4 md:px-6 py-1 sm:py-2 rounded text-xs sm:text-sm md:text-base transition flex items-center gap-1"
           >
-            <span className="text-xl">+</span> Yeni Not
+            <span className="text-base sm:text-xl">+</span> <span className="hidden sm:inline">Yeni Not</span>
           </button>
         </div>
       </div>

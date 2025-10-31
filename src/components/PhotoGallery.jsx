@@ -13,6 +13,7 @@ function PhotoGallery() {
   const [visiblePhotos, setVisiblePhotos] = useState(20);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const observer = useRef();
 
   useEffect(() => {
@@ -56,6 +57,7 @@ function PhotoGallery() {
       });
       setNewCategoryName('');
       setParentCategoryId(null);
+      setShowCategoryModal(false);
       fetchCategories();
     } catch (error) {
       console.error('Kategori oluşturulamadı:', error);
@@ -90,20 +92,7 @@ function PhotoGallery() {
     }
   };
 
-  const handleDeleteCategory = async (id) => {
-    if (confirm('Bu kategoriyi ve içindeki tüm alt kategoriler/fotoğrafları silmek istediğinize emin misiniz?')) {
-      try {
-        await fetch(`${API_URL}/api/photo-categories/${id}`, { method: 'DELETE' });
-        fetchCategories();
-        if (selectedCategory === id) {
-          setSelectedCategory(null);
-          setPhotos([]);
-        }
-      } catch (error) {
-        console.error('Kategori silinemedi:', error);
-      }
-    }
-  };
+  // Kategori silme artık Settings'te
 
   const handleDeletePhoto = async (id) => {
     if (confirm('Bu fotoğrafı silmek istediğinize emin misiniz?')) {
@@ -203,18 +192,12 @@ function PhotoGallery() {
           <button
             onClick={() => {
               setParentCategoryId(cat.id);
+              setShowCategoryModal(true);
             }}
             className="px-2 py-1 text-sm text-green-600 hover:text-green-800 opacity-0 group-hover:opacity-100"
             title="Alt kategori ekle"
           >
             +
-          </button>
-          <button
-            onClick={() => handleDeleteCategory(cat.id)}
-            className="px-2 py-1 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100"
-            title="Sil"
-          >
-            ❌
           </button>
         </div>
         
@@ -233,12 +216,6 @@ function PhotoGallery() {
                   }`}
                 >
                   📂 {subCat.name}
-                </button>
-                <button
-                  onClick={() => handleDeleteCategory(subCat.id)}
-                  className="px-2 py-1 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 text-sm"
-                >
-                  ❌
                 </button>
               </div>
             ))}
@@ -259,38 +236,18 @@ function PhotoGallery() {
         {/* Sol Sidebar - Kategoriler */}
         <div className="md:col-span-1">
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-bold mb-3">Kategoriler</h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold">Kategoriler</h3>
+              <button
+                onClick={() => setShowCategoryModal(true)}
+                className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs sm:text-sm"
+                title="Yeni kategori ekle"
+              >
+                +
+              </button>
+            </div>
             
             {renderCategoryTree(categoryTree)}
-
-            <form onSubmit={handleCreateCategory} className="mt-4 pt-4 border-t">
-              <input
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder={parentCategoryId ? "Alt kategori adı" : "Yeni kategori adı"}
-                className="w-full px-3 py-2 border rounded-lg text-sm mb-2"
-                required
-              />
-              {parentCategoryId && (
-                <div className="text-xs text-gray-600 mb-2">
-                  Alt kategori: {categories.find(c => c.id === parentCategoryId)?.name}
-                  <button
-                    type="button"
-                    onClick={() => setParentCategoryId(null)}
-                    className="ml-2 text-red-500"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-              <button
-                type="submit"
-                className="w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm"
-              >
-                + Kategori Ekle
-              </button>
-            </form>
           </div>
         </div>
 
@@ -350,7 +307,8 @@ function PhotoGallery() {
                 <label className="block">
                   <input
                     type="file"
-                    accept="image/*,video/*"
+                    accept="image/*"
+                    capture="environment"
                     multiple
                     onChange={handleUpload}
                     disabled={uploading}
@@ -495,6 +453,73 @@ function PhotoGallery() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kategori Ekleme Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-xl font-bold">Yeni Kategori Ekle</h3>
+              <button
+                onClick={() => {
+                  setShowCategoryModal(false);
+                  setParentCategoryId(null);
+                  setNewCategoryName('');
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleCreateCategory} className="flex-1 overflow-auto p-4">
+              {parentCategoryId && (
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">
+                      Alt kategori: <strong>{categories.find(c => c.id === parentCategoryId)?.name}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setParentCategoryId(null)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      ✕ Kaldır
+                    </button>
+                  </div>
+                </div>
+              )}
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder={parentCategoryId ? "Alt kategori adı" : "Yeni kategori adı"}
+                className="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCategoryModal(false);
+                    setParentCategoryId(null);
+                    setNewCategoryName('');
+                  }}
+                  className="flex-1 bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
+                >
+                  Kategori Ekle
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

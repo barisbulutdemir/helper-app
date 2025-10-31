@@ -68,6 +68,7 @@ function DocumentsSection() {
           <span className="sr-only">Dosya seç</span>
           <input
             type="file"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.txt,.csv"
             onChange={handleUpload}
             disabled={uploading}
             className="block w-full text-sm text-gray-500

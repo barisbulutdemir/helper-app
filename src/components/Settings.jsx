@@ -27,12 +27,16 @@ function Settings() {
     permanent: false
   });
   
+  // Photo Categories state
+  const [photoCategories, setPhotoCategories] = useState([]);
+  
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchSettings();
     fetchBannedIPs();
+    fetchPhotoCategories();
   }, []);
 
   const fetchSettings = async () => {
@@ -53,6 +57,53 @@ function Settings() {
     } catch (error) {
       console.error('Banlı IP listesi yüklenemedi:', error);
     }
+  };
+
+  const fetchPhotoCategories = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/photo-categories`);
+      const data = await response.json();
+      setPhotoCategories(data);
+    } catch (error) {
+      console.error('Fotoğraf kategorileri yüklenemedi:', error);
+    }
+  };
+
+  const handleDeletePhotoCategory = async (id) => {
+    const category = photoCategories.find(c => c.id === id);
+    const categoryName = category?.name || 'Bu kategori';
+    
+    if (!confirm(`${categoryName} kategorisini ve içindeki tüm alt kategoriler/fotoğrafları silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/photo-categories/${id}`, { 
+        method: 'DELETE' 
+      });
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Kategori başarıyla silindi' });
+        fetchPhotoCategories();
+      } else {
+        const data = await response.json();
+        setMessage({ type: 'error', text: data.error || 'Kategori silinemedi' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Bağlantı hatası' });
+      console.error('Kategori silinemedi:', error);
+    }
+  };
+
+  // Kategori ağacını oluştur
+  const buildCategoryTree = () => {
+    const rootCategories = photoCategories.filter(cat => !cat.parent_id);
+    const childCategories = photoCategories.filter(cat => cat.parent_id);
+    
+    return rootCategories.map(root => ({
+      ...root,
+      children: childCategories.filter(child => child.parent_id === root.id)
+    }));
   };
 
   const handleSettingsUpdate = async (e) => {
@@ -205,6 +256,16 @@ function Settings() {
           }`}
         >
           Güvenlik
+        </button>
+        <button
+          onClick={() => setActiveSection('categories')}
+          className={`px-4 py-2 font-medium ${
+            activeSection === 'categories'
+              ? 'border-b-2 border-blue-500 text-blue-600'
+              : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          📸 Kategoriler
         </button>
       </div>
 
@@ -420,6 +481,55 @@ function Settings() {
                     >
                       Banı Kaldır
                     </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Photo Categories Management */}
+      {activeSection === 'categories' && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="font-bold text-gray-800 mb-4">Fotoğraf Kategorileri ({photoCategories.length})</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              ⚠️ <strong>Dikkat:</strong> Kategori silme işlemi geri alınamaz. Kategori silindiğinde içindeki tüm fotoğraflar ve alt kategoriler de silinir.
+            </p>
+            
+            {photoCategories.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">Henüz kategori eklenmemiş</p>
+            ) : (
+              <div className="space-y-3">
+                {buildCategoryTree().map(cat => (
+                  <div key={cat.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">📁 {cat.name}</p>
+                        {cat.children && cat.children.length > 0 && (
+                          <div className="mt-2 ml-4 space-y-1">
+                            {cat.children.map(subCat => (
+                              <div key={subCat.id} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <p className="text-sm text-gray-700">📂 {subCat.name}</p>
+                                <button
+                                  onClick={() => handleDeletePhotoCategory(subCat.id)}
+                                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs sm:text-sm transition"
+                                >
+                                  🗑️ Sil
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDeletePhotoCategory(cat.id)}
+                        className="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition"
+                      >
+                        🗑️ Sil
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
