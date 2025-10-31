@@ -650,11 +650,8 @@ app.get('/api/machine-guide/export', authenticateToken, (req, res) => {
       `).all(guide.id);
       return {
         'Başlık': stripHtmlTags(guide.title),
-        'Problem': stripHtmlTags(guide.problem || ''),
         'Çözüm': stripHtmlTags(guide.solution || ''),
-        'Tag\'ler': tags.map(t => t.name).join(', ') || '',
-        'Oluşturulma': new Date(guide.created_at).toLocaleString('tr-TR'),
-        'Güncelleme': new Date(guide.updated_at).toLocaleString('tr-TR')
+        'Tag\'ler': tags.map(t => t.name).join(', ') || ''
       };
     });
     
@@ -666,11 +663,8 @@ app.get('/api/machine-guide/export', authenticateToken, (req, res) => {
     // Column genişliklerini ayarla
     worksheet['!cols'] = [
       { wch: 30 }, // Başlık
-      { wch: 40 }, // Problem
       { wch: 50 }, // Çözüm
-      { wch: 20 }, // Tag'ler
-      { wch: 20 }, // Oluşturulma
-      { wch: 20 }  // Güncelleme
+      { wch: 20 }  // Tag'ler
     ];
     
     // Buffer olarak oluştur

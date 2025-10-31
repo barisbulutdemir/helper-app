@@ -384,19 +384,19 @@ function NotesSection() {
                     <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
                       Renk:
                     </label>
-                    <input
-                      type="color"
-                      value={newCategoryColor}
-                      onChange={(e) => setNewCategoryColor(e.target.value)}
+                  <input
+                    type="color"
+                    value={newCategoryColor}
+                    onChange={(e) => setNewCategoryColor(e.target.value)}
                       className="w-16 h-10 border rounded-lg cursor-pointer"
-                      title="Kategori rengi seçin"
-                    />
-                    <button
-                      type="submit"
+                    title="Kategori rengi seçin"
+                  />
+                  <button
+                    type="submit"
                       className="ml-auto bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
-                    >
-                      + Ekle
-                    </button>
+                  >
+                    + Ekle
+                  </button>
                   </div>
                 </div>
               </form>

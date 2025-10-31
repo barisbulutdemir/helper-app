@@ -341,12 +341,12 @@ function PhotoGallery() {
                         >
                           ⬇️ İndir ({selectedPhotos.length})
                         </button>
-                        <button
-                          onClick={handleDeleteSelected}
-                          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold"
-                        >
+                      <button
+                        onClick={handleDeleteSelected}
+                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold"
+                      >
                           🗑️ Sil ({selectedPhotos.length})
-                        </button>
+                      </button>
                       </>
                     )}
                   </div>
