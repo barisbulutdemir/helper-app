@@ -619,6 +619,23 @@ app.delete('/api/machine-guide/:id', authenticateToken, (req, res) => {
 });
 
 // Excel export
+// HTML tag'lerini temizleme fonksiyonu
+const stripHtmlTags = (html) => {
+  if (!html) return '';
+  // HTML tag'lerini kaldır
+  let text = html.replace(/<[^>]*>/g, '');
+  // HTML entity'lerini decode et
+  text = text.replace(/&nbsp;/g, ' ');
+  text = text.replace(/&amp;/g, '&');
+  text = text.replace(/&lt;/g, '<');
+  text = text.replace(/&gt;/g, '>');
+  text = text.replace(/&quot;/g, '"');
+  text = text.replace(/&#39;/g, "'");
+  // Fazla boşlukları temizle
+  text = text.replace(/\s+/g, ' ').trim();
+  return text;
+};
+
 app.get('/api/machine-guide/export', authenticateToken, (req, res) => {
   try {
     const guides = db.prepare('SELECT * FROM machine_guide ORDER BY updated_at DESC').all();
@@ -632,9 +649,9 @@ app.get('/api/machine-guide/export', authenticateToken, (req, res) => {
         WHERE mgtr.guide_id = ?
       `).all(guide.id);
       return {
-        'Başlık': guide.title,
-        'Problem': guide.problem || '',
-        'Çözüm': guide.solution || '',
+        'Başlık': stripHtmlTags(guide.title),
+        'Problem': stripHtmlTags(guide.problem || ''),
+        'Çözüm': stripHtmlTags(guide.solution || ''),
         'Tag\'ler': tags.map(t => t.name).join(', ') || '',
         'Oluşturulma': new Date(guide.created_at).toLocaleString('tr-TR'),
         'Güncelleme': new Date(guide.updated_at).toLocaleString('tr-TR')
