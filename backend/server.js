@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import bcrypt from 'bcrypt';
+import XLSX from 'xlsx';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
@@ -483,11 +484,73 @@ app.delete('/api/photos/:id', authenticateToken, (req, res) => {
   }
 });
 
+// ================== MAKİNA REHBERİ TAGS ==================
+app.get('/api/machine-guide-tags', authenticateToken, (req, res) => {
+  try {
+    const tags = db.prepare('SELECT * FROM machine_guide_tags ORDER BY name ASC').all();
+    res.json(tags);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/machine-guide-tags', authenticateToken, (req, res) => {
+  try {
+    const { name, color } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: 'Tag adı gerekli' });
+    }
+    const result = db.prepare('INSERT INTO machine_guide_tags (name, color) VALUES (?, ?)').run(name, color || '#3B82F6');
+    res.json({ id: result.lastInsertRowid });
+  } catch (error) {
+    if (error.message.includes('UNIQUE constraint')) {
+      res.status(400).json({ error: 'Bu tag zaten mevcut' });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+app.delete('/api/machine-guide-tags/:id', authenticateToken, (req, res) => {
+  try {
+    db.prepare('DELETE FROM machine_guide_tags WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ================== MAKİNA REHBERİ ==================
 app.get('/api/machine-guide', authenticateToken, (req, res) => {
   try {
-    const guides = db.prepare('SELECT * FROM machine_guide ORDER BY updated_at DESC').all();
-    res.json(guides);
+    const { tag_id } = req.query;
+    let guides;
+    
+    if (tag_id) {
+      // Tag'e göre filtrele
+      guides = db.prepare(`
+        SELECT DISTINCT mg.* 
+        FROM machine_guide mg
+        INNER JOIN machine_guide_tag_relations mgtr ON mg.id = mgtr.guide_id
+        WHERE mgtr.tag_id = ?
+        ORDER BY mg.updated_at DESC
+      `).all(tag_id);
+    } else {
+      guides = db.prepare('SELECT * FROM machine_guide ORDER BY updated_at DESC').all();
+    }
+    
+    // Her guide için tag'leri al
+    const guidesWithTags = guides.map(guide => {
+      const tags = db.prepare(`
+        SELECT t.id, t.name, t.color
+        FROM machine_guide_tags t
+        INNER JOIN machine_guide_tag_relations mgtr ON t.id = mgtr.tag_id
+        WHERE mgtr.guide_id = ?
+      `).all(guide.id);
+      return { ...guide, tags };
+    });
+    
+    res.json(guidesWithTags);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -495,9 +558,23 @@ app.get('/api/machine-guide', authenticateToken, (req, res) => {
 
 app.post('/api/machine-guide', authenticateToken, (req, res) => {
   try {
-    const { title, problem, solution } = req.body;
+    const { title, problem, solution, tag_ids } = req.body;
     const result = db.prepare('INSERT INTO machine_guide (title, problem, solution) VALUES (?, ?, ?)').run(title, problem, solution);
-    res.json({ id: result.lastInsertRowid });
+    const guideId = result.lastInsertRowid;
+    
+    // Tag'leri ekle
+    if (tag_ids && Array.isArray(tag_ids) && tag_ids.length > 0) {
+      const insertTag = db.prepare('INSERT INTO machine_guide_tag_relations (guide_id, tag_id) VALUES (?, ?)');
+      tag_ids.forEach(tagId => {
+        try {
+          insertTag.run(guideId, tagId);
+        } catch (err) {
+          // Duplicate hatası görmezden gel
+        }
+      });
+    }
+    
+    res.json({ id: guideId });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -505,9 +582,27 @@ app.post('/api/machine-guide', authenticateToken, (req, res) => {
 
 app.put('/api/machine-guide/:id', authenticateToken, (req, res) => {
   try {
-    const { title, problem, solution } = req.body;
+    const { title, problem, solution, tag_ids } = req.body;
+    const guideId = parseInt(req.params.id);
+    
     db.prepare('UPDATE machine_guide SET title = ?, problem = ?, solution = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .run(title, problem, solution, req.params.id);
+      .run(title, problem, solution, guideId);
+    
+    // Mevcut tag'leri sil
+    db.prepare('DELETE FROM machine_guide_tag_relations WHERE guide_id = ?').run(guideId);
+    
+    // Yeni tag'leri ekle
+    if (tag_ids && Array.isArray(tag_ids) && tag_ids.length > 0) {
+      const insertTag = db.prepare('INSERT INTO machine_guide_tag_relations (guide_id, tag_id) VALUES (?, ?)');
+      tag_ids.forEach(tagId => {
+        try {
+          insertTag.run(guideId, tagId);
+        } catch (err) {
+          // Hata görmezden gel
+        }
+      });
+    }
+    
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -518,6 +613,55 @@ app.delete('/api/machine-guide/:id', authenticateToken, (req, res) => {
   try {
     db.prepare('DELETE FROM machine_guide WHERE id = ?').run(req.params.id);
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Excel export
+app.get('/api/machine-guide/export', authenticateToken, (req, res) => {
+  try {
+    const guides = db.prepare('SELECT * FROM machine_guide ORDER BY updated_at DESC').all();
+    
+    // Her guide için tag'leri al
+    const guidesWithTags = guides.map(guide => {
+      const tags = db.prepare(`
+        SELECT t.name
+        FROM machine_guide_tags t
+        INNER JOIN machine_guide_tag_relations mgtr ON t.id = mgtr.tag_id
+        WHERE mgtr.guide_id = ?
+      `).all(guide.id);
+      return {
+        'Başlık': guide.title,
+        'Problem': guide.problem || '',
+        'Çözüm': guide.solution || '',
+        'Tag\'ler': tags.map(t => t.name).join(', ') || '',
+        'Oluşturulma': new Date(guide.created_at).toLocaleString('tr-TR'),
+        'Güncelleme': new Date(guide.updated_at).toLocaleString('tr-TR')
+      };
+    });
+    
+    // Excel workbook oluştur
+    const worksheet = XLSX.utils.json_to_sheet(guidesWithTags);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Makine Rehberi');
+    
+    // Column genişliklerini ayarla
+    worksheet['!cols'] = [
+      { wch: 30 }, // Başlık
+      { wch: 40 }, // Problem
+      { wch: 50 }, // Çözüm
+      { wch: 20 }, // Tag'ler
+      { wch: 20 }, // Oluşturulma
+      { wch: 20 }  // Güncelleme
+    ];
+    
+    // Buffer olarak oluştur
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=makine-rehberi-${new Date().toISOString().split('T')[0]}.xlsx`);
+    res.send(excelBuffer);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

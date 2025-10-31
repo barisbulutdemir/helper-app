@@ -4,18 +4,27 @@ import { apiFetch } from '../utils/api';
 
 function MachineGuide() {
   const [guides, setGuides] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [selectedTagId, setSelectedTagId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
   const [editingGuide, setEditingGuide] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
-    solution: ''
+    solution: '',
+    tag_ids: []
+  });
+  const [tagFormData, setTagFormData] = useState({
+    name: '',
+    color: '#3B82F6'
   });
   const [saveStatus, setSaveStatus] = useState(''); // 'saving' veya 'saved'
 
   useEffect(() => {
     fetchGuides();
-  }, []);
+    fetchTags();
+  }, [selectedTagId]);
 
   // Otomatik kaydetme (debounce ile)
   useEffect(() => {
@@ -68,11 +77,24 @@ function MachineGuide() {
 
   const fetchGuides = async () => {
     try {
-      const response = await apiFetch('/api/machine-guide');
+      const url = selectedTagId 
+        ? `/api/machine-guide?tag_id=${selectedTagId}`
+        : '/api/machine-guide';
+      const response = await apiFetch(url);
       const data = await response.json();
       setGuides(data);
     } catch (error) {
       console.error('Rehber yüklenemedi:', error);
+    }
+  };
+
+  const fetchTags = async () => {
+    try {
+      const response = await apiFetch('/api/machine-guide-tags');
+      const data = await response.json();
+      setTags(data);
+    } catch (error) {
+      console.error('Tag'ler yüklenemedi:', error);
     }
   };
 
@@ -132,9 +154,74 @@ function MachineGuide() {
     }
   };
 
+  const handleTagToggle = (tagId) => {
+    const currentIds = formData.tag_ids || [];
+    if (currentIds.includes(tagId)) {
+      setFormData({ ...formData, tag_ids: currentIds.filter(id => id !== tagId) });
+    } else {
+      setFormData({ ...formData, tag_ids: [...currentIds, tagId] });
+    }
+  };
+
+  const handleTagSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await apiFetch('/api/machine-guide-tags', {
+        method: 'POST',
+        body: JSON.stringify(tagFormData)
+      });
+      
+      if (response.ok) {
+        fetchTags();
+        setTagFormData({ name: '', color: '#3B82F6' });
+        setShowTagModal(false);
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Tag oluşturulamadı');
+      }
+    } catch (error) {
+      console.error('Tag oluşturulamadı:', error);
+      alert('Tag oluşturulamadı');
+    }
+  };
+
+  const handleTagDelete = async (tagId) => {
+    if (confirm('Bu tag\'i silmek istediğinize emin misiniz? Tüm rehberlerden de kaldırılacak.')) {
+      try {
+        await apiFetch(`/api/machine-guide-tags/${tagId}`, { method: 'DELETE' });
+        fetchTags();
+        fetchGuides();
+      } catch (error) {
+        console.error('Tag silinemedi:', error);
+      }
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const response = await apiFetch('/api/machine-guide/export');
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `makine-rehberi-${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Excel export başarısız');
+      }
+    } catch (error) {
+      console.error('Excel export hatası:', error);
+      alert('Excel export başarısız');
+    }
+  };
+
   const openNewGuide = () => {
     setEditingGuide(null);
-    setFormData({ title: '', solution: '' });
+    setFormData({ title: '', solution: '', tag_ids: [] });
     setSaveStatus('');
     setShowModal(true);
   };
@@ -143,7 +230,8 @@ function MachineGuide() {
     setEditingGuide(guide);
     setFormData({
       title: guide.title,
-      solution: guide.solution
+      solution: guide.solution,
+      tag_ids: guide.tags ? guide.tags.map(t => t.id) : []
     });
     setSaveStatus('');
     setShowModal(true);
@@ -152,35 +240,70 @@ function MachineGuide() {
   const closeModal = () => {
     setShowModal(false);
     setEditingGuide(null);
-    setFormData({ title: '', solution: '' });
+    setFormData({ title: '', solution: '', tag_ids: [] });
     setSaveStatus('');
   };
 
   const filteredGuides = guides.filter(guide =>
     guide.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    guide.solution.toLowerCase().includes(searchTerm.toLowerCase())
+    (guide.solution && guide.solution.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (guide.tags && guide.tags.some(tag => tag.name.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">🔧 Makina Rehberi</h2>
-        <button
-          onClick={openNewGuide}
-          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg"
-        >
-          + Yeni Rehber Ekle
-        </button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <h2 className="text-xl sm:text-2xl font-bold">🔧 Makina Rehberi</h2>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setShowTagModal(true)}
+            className="bg-purple-500 hover:bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base"
+          >
+            🏷️ Tag Yönetimi
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base"
+          >
+            📊 Excel Export
+          </button>
+          <button
+            onClick={openNewGuide}
+            className="bg-green-500 hover:bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base"
+          >
+            + Yeni Rehber
+          </button>
+        </div>
       </div>
 
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Ara... (başlık veya çözümde)"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg"
-        />
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select
+            value={selectedTagId}
+            onChange={(e) => setSelectedTagId(e.target.value)}
+            className="px-3 sm:px-4 py-2 border rounded-lg text-sm sm:text-base flex-shrink-0 sm:w-auto w-full"
+          >
+            <option value="">Tüm Tag'ler</option>
+            {tags.map(tag => (
+              <option key={tag.id} value={tag.id}>{tag.name}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="Ara... (başlık, çözüm veya tag)"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 px-3 sm:px-4 py-2 border rounded-lg text-sm sm:text-base"
+          />
+        </div>
+        {selectedTagId && (
+          <button
+            onClick={() => setSelectedTagId('')}
+            className="text-sm text-blue-600 hover:text-blue-800"
+          >
+            ← Filtreyi temizle
+          </button>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -193,6 +316,19 @@ function MachineGuide() {
             <div className="flex justify-between items-start">
               <div className="flex-1 overflow-hidden">
                 <h3 className="font-bold text-lg mb-2 truncate">{guide.title}</h3>
+                {guide.tags && guide.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {guide.tags.map(tag => (
+                      <span
+                        key={tag.id}
+                        className="px-2 py-1 rounded text-xs"
+                        style={{ backgroundColor: tag.color + '20', color: tag.color, border: `1px solid ${tag.color}` }}
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div 
                   className="guide-preview text-gray-700 text-sm line-clamp-3 overflow-hidden"
                   dangerouslySetInnerHTML={{ __html: guide.solution || 'Çözüm yok...' }}
@@ -215,7 +351,7 @@ function MachineGuide() {
 
       {filteredGuides.length === 0 && (
         <p className="text-center text-gray-400 py-8">
-          {searchTerm ? 'Arama sonucu bulunamadı' : 'Henüz rehber eklenmemiş'}
+          {searchTerm || selectedTagId ? 'Arama sonucu bulunamadı' : 'Henüz rehber eklenmemiş'}
         </p>
       )}
 
@@ -256,6 +392,37 @@ function MachineGuide() {
                 </div>
 
                 <div>
+                  <label className="block font-semibold mb-2">Tag'ler</label>
+                  <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg">
+                    {tags.map(tag => (
+                      <label
+                        key={tag.id}
+                        className="flex items-center gap-2 cursor-pointer px-3 py-1 rounded border"
+                        style={{ 
+                          backgroundColor: formData.tag_ids?.includes(tag.id) ? tag.color + '30' : 'transparent',
+                          borderColor: tag.color
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleTagToggle(tag.id);
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.tag_ids?.includes(tag.id) || false}
+                          onChange={() => handleTagToggle(tag.id)}
+                          className="cursor-pointer"
+                        />
+                        <span style={{ color: tag.color }}>{tag.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {tags.length === 0 && (
+                    <p className="text-sm text-gray-500">Henüz tag oluşturulmamış. Tag Yönetimi butonundan tag oluşturun.</p>
+                  )}
+                </div>
+
+                <div>
                   <label className="block font-semibold mb-2">Çözüm</label>
                   <RichTextEditor
                     value={formData.solution}
@@ -288,6 +455,102 @@ function MachineGuide() {
                   )}
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tag Yönetimi Modal */}
+      {showTagModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowTagModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">🏷️ Tag Yönetimi</h2>
+                <button
+                  onClick={() => setShowTagModal(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleTagSubmit} className="space-y-4 mb-6">
+                <div>
+                  <label className="block font-semibold mb-2">Tag Adı</label>
+                  <input
+                    type="text"
+                    value={tagFormData.name}
+                    onChange={(e) => setTagFormData({ ...tagFormData, name: e.target.value })}
+                    placeholder="Örn: Elektronik, Mekanik, Yazılım"
+                    className="w-full px-3 py-2 border rounded-lg"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-2">Renk</label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="color"
+                      value={tagFormData.color}
+                      onChange={(e) => setTagFormData({ ...tagFormData, color: e.target.value })}
+                      className="w-20 h-10 rounded cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={tagFormData.color}
+                      onChange={(e) => setTagFormData({ ...tagFormData, color: e.target.value })}
+                      className="flex-1 px-3 py-2 border rounded-lg"
+                      placeholder="#3B82F6"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg"
+                >
+                  Tag Ekle
+                </button>
+              </form>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3">Mevcut Tag'ler</h3>
+                <div className="space-y-2">
+                  {tags.map(tag => (
+                    <div
+                      key={tag.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="px-3 py-1 rounded text-sm"
+                          style={{ backgroundColor: tag.color + '30', color: tag.color, border: `1px solid ${tag.color}` }}
+                        >
+                          {tag.name}
+                        </span>
+                        <span className="text-sm text-gray-500">#{tag.color}</span>
+                      </div>
+                      <button
+                        onClick={() => handleTagDelete(tag.id)}
+                        className="text-red-500 hover:text-red-700 px-3 py-1"
+                      >
+                        🗑️ Sil
+                      </button>
+                    </div>
+                  ))}
+                  {tags.length === 0 && (
+                    <p className="text-center text-gray-400 py-4">Henüz tag oluşturulmamış</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

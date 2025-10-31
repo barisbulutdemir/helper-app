@@ -90,6 +90,21 @@ db.exec(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS machine_guide_tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    color TEXT DEFAULT '#3B82F6',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS machine_guide_tag_relations (
+    guide_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    PRIMARY KEY (guide_id, tag_id),
+    FOREIGN KEY (guide_id) REFERENCES machine_guide(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES machine_guide_tags(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS auth (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     password_hash TEXT NOT NULL
