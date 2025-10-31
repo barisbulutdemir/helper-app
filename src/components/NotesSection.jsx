@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import RichTextEditor from './RichTextEditor';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 function NotesSection() {
   const [notes, setNotes] = useState([]);
