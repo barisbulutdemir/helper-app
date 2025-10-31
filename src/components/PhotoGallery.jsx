@@ -123,6 +123,64 @@ function PhotoGallery() {
     }
   };
 
+  const getSafeFileName = (description, photoId) => {
+    if (description) {
+      // Türkçe karakterleri ve özel karakterleri temizle
+      const safeName = description
+        .replace(/[ıİ]/g, 'i')
+        .replace(/[ğĞ]/g, 'g')
+        .replace(/[üÜ]/g, 'u')
+        .replace(/[şŞ]/g, 's')
+        .replace(/[öÖ]/g, 'o')
+        .replace(/[çÇ]/g, 'c')
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .substring(0, 50);
+      return safeName || `photo_${photoId}`;
+    }
+    return `photo_${photoId}`;
+  };
+
+  const handleDownloadPhoto = (photo) => {
+    const url = `${API_URL}${photo.file_path}`;
+    const link = document.createElement('a');
+    link.href = url;
+    // Dosya uzantısını file_path'ten al
+    const extension = photo.file_path.match(/\.(jpg|jpeg|png|gif|webp|mp4|mov)$/i)?.[0] || '.jpg';
+    link.download = `${getSafeFileName(photo.description, photo.id)}${extension}`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadSelected = async () => {
+    if (selectedPhotos.length === 0) return;
+    
+    try {
+      for (const photoId of selectedPhotos) {
+        const photo = photos.find(p => p.id === photoId);
+        if (photo) {
+          const url = `${API_URL}${photo.file_path}`;
+          const link = document.createElement('a');
+          link.href = url;
+          // Dosya uzantısını file_path'ten al
+          const extension = photo.file_path.match(/\.(jpg|jpeg|png|gif|webp|mp4|mov)$/i)?.[0] || '.jpg';
+          link.download = `${getSafeFileName(photo.description, photo.id)}${extension}`;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Çoklu indirme için kısa bir gecikme
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+    } catch (error) {
+      console.error('Fotoğraflar indirilemedi:', error);
+      alert('Fotoğraflar indirilirken bir hata oluştu');
+    }
+  };
+
   const togglePhotoSelection = (photoId) => {
     setSelectedPhotos(prev => 
       prev.includes(photoId) 
@@ -279,12 +337,20 @@ function PhotoGallery() {
                       {selectionMode ? '✓ Seçim Modu' : '☐ Çoklu Seç'}
                     </button>
                     {selectionMode && selectedPhotos.length > 0 && (
-                      <button
-                        onClick={handleDeleteSelected}
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold"
-                      >
-                        🗑️ Seçilenleri Sil ({selectedPhotos.length})
-                      </button>
+                      <>
+                        <button
+                          onClick={handleDownloadSelected}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold"
+                        >
+                          ⬇️ İndir ({selectedPhotos.length})
+                        </button>
+                        <button
+                          onClick={handleDeleteSelected}
+                          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold"
+                        >
+                          🗑️ Sil ({selectedPhotos.length})
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -308,7 +374,6 @@ function PhotoGallery() {
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     multiple
                     onChange={handleUpload}
                     disabled={uploading}
@@ -353,6 +418,20 @@ function PhotoGallery() {
                           />
                         </div>
                       )}
+                      {!selectionMode && (
+                        <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadPhoto(photo);
+                            }}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs"
+                            title="İndir"
+                          >
+                            ⬇️
+                          </button>
+                        </div>
+                      )}
                       {photo.file_type?.startsWith('video/') ? (
                         <div className="relative w-full h-40 bg-gray-200 flex items-center justify-center">
                           <video
@@ -369,7 +448,7 @@ function PhotoGallery() {
                         <div className="relative">
                           <img
                             src={`${API_URL}${encodeURI(photo.file_path)}`}
-                            alt={photo.original_name}
+                            alt={photo.description || 'Fotoğraf'}
                             className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-300"
                             loading="eager"
                             onError={(e) => {
@@ -383,11 +462,9 @@ function PhotoGallery() {
                         </div>
                       )}
                     </div>
-                    {photo.description && (
                       <p className="text-xs text-gray-600 mt-1 truncate px-1">
-                        {photo.description}
+                        {photo.description || ''}
                       </p>
-                    )}
                   </div>
                 ))}
               </div>
@@ -425,12 +502,11 @@ function PhotoGallery() {
             ) : (
               <img
                 src={`${API_URL}${encodeURI(selectedPhoto.file_path)}`}
-                alt={selectedPhoto.original_name}
+                alt={selectedPhoto.description || 'Fotoğraf'}
                 className="w-full max-h-[70vh] object-contain bg-black"
               />
             )}
             <div className="p-6">
-              <h3 className="font-bold text-lg mb-2">{selectedPhoto.original_name}</h3>
               <textarea
                 defaultValue={selectedPhoto.description || ''}
                 onBlur={(e) => handleUpdateDescription(selectedPhoto.id, e.target.value)}
@@ -444,6 +520,12 @@ function PhotoGallery() {
                   className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg"
                 >
                   Kapat
+                </button>
+                <button
+                  onClick={() => handleDownloadPhoto(selectedPhoto)}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
+                >
+                  ⬇️ İndir
                 </button>
                 <button
                   onClick={() => handleDeletePhoto(selectedPhoto.id)}
