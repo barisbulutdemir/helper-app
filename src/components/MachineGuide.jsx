@@ -94,7 +94,7 @@ function MachineGuide() {
       const data = await response.json();
       setTags(data);
     } catch (error) {
-      console.error('Tag'ler yüklenemedi:', error);
+      console.error('Tagler yüklenemedi:', error);
     }
   };
 
@@ -283,7 +283,7 @@ function MachineGuide() {
             onChange={(e) => setSelectedTagId(e.target.value)}
             className="px-3 sm:px-4 py-2 border rounded-lg text-sm sm:text-base flex-shrink-0 sm:w-auto w-full"
           >
-            <option value="">Tüm Tag'ler</option>
+            <option value="">Tüm Tagler</option>
             {tags.map(tag => (
               <option key={tag.id} value={tag.id}>{tag.name}</option>
             ))}
@@ -392,7 +392,7 @@ function MachineGuide() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Tag'ler</label>
+                  <label className="block font-semibold mb-2">Tagler</label>
                   <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg">
                     {tags.map(tag => (
                       <label
@@ -522,7 +522,7 @@ function MachineGuide() {
               </form>
 
               <div className="border-t pt-4">
-                <h3 className="font-semibold mb-3">Mevcut Tag'ler</h3>
+                <h3 className="font-semibold mb-3">Mevcut Tagler</h3>
                 <div className="space-y-2">
                   {tags.map(tag => (
                     <div
