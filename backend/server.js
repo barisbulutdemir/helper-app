@@ -295,6 +295,66 @@ app.delete('/api/notes/:id', authenticateToken, (req, res) => {
   }
 });
 
+// ================== CHECKLIST ITEMS ==================
+app.get('/api/notes/:noteId/checklist', authenticateToken, (req, res) => {
+  try {
+    const items = db.prepare('SELECT * FROM checklist_items WHERE note_id = ? ORDER BY item_order ASC, id ASC').all(req.params.noteId);
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/notes/:noteId/checklist', authenticateToken, (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || text.trim() === '') {
+      return res.status(400).json({ error: 'Checklist item text is required' });
+    }
+    
+    // Get max order for this note
+    const maxOrder = db.prepare('SELECT MAX(item_order) as max_order FROM checklist_items WHERE note_id = ?').get(req.params.noteId);
+    const nextOrder = (maxOrder?.max_order ?? -1) + 1;
+    
+    const result = db.prepare('INSERT INTO checklist_items (note_id, text, item_order) VALUES (?, ?, ?)')
+      .run(req.params.noteId, text.trim(), nextOrder);
+    res.json({ id: result.lastInsertRowid });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/checklist/:id', authenticateToken, (req, res) => {
+  try {
+    const { text, completed, item_order } = req.body;
+    
+    if (text !== undefined) {
+      db.prepare('UPDATE checklist_items SET text = ? WHERE id = ?').run(text.trim(), req.params.id);
+    }
+    
+    if (completed !== undefined) {
+      db.prepare('UPDATE checklist_items SET completed = ? WHERE id = ?').run(completed ? 1 : 0, req.params.id);
+    }
+    
+    if (item_order !== undefined) {
+      db.prepare('UPDATE checklist_items SET item_order = ? WHERE id = ?').run(item_order, req.params.id);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/checklist/:id', authenticateToken, (req, res) => {
+  try {
+    db.prepare('DELETE FROM checklist_items WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ================== TODO KATEGORİLERİ ==================
 app.get('/api/todo-categories', authenticateToken, (req, res) => {
   try {

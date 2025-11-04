@@ -34,6 +34,16 @@ db.exec(`
     FOREIGN KEY (category_id) REFERENCES note_categories(id) ON DELETE SET NULL
   );
 
+  CREATE TABLE IF NOT EXISTS checklist_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    note_id INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    item_order INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS todo_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,

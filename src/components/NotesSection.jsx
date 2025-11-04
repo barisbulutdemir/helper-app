@@ -17,6 +17,8 @@ function NotesSection() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState('#3B82F6');
+  const [checklistItems, setChecklistItems] = useState([]);
+  const [newChecklistItem, setNewChecklistItem] = useState('');
 
   useEffect(() => {
     fetchNotes();
@@ -110,19 +112,97 @@ function NotesSection() {
     }
   };
 
-  const openModal = (note = null) => {
+  const fetchChecklist = async (noteId) => {
+    if (!noteId) {
+      setChecklistItems([]);
+      return;
+    }
+    try {
+      const response = await apiFetch(`/api/notes/${noteId}/checklist`);
+      const data = await response.json();
+      setChecklistItems(data);
+    } catch (error) {
+      console.error('Checklist yüklenemedi:', error);
+      setChecklistItems([]);
+    }
+  };
+
+  const addChecklistItem = async () => {
+    if (!newChecklistItem.trim() || !editId) return;
+    
+    try {
+      const response = await apiFetch(`/api/notes/${editId}/checklist`, {
+        method: 'POST',
+        body: JSON.stringify({ text: newChecklistItem.trim() })
+      });
+      const newItem = await response.json();
+      await fetchChecklist(editId);
+      setNewChecklistItem('');
+    } catch (error) {
+      console.error('Checklist item eklenemedi:', error);
+    }
+  };
+
+  const toggleChecklistItem = async (itemId, completed) => {
+    try {
+      await apiFetch(`/api/checklist/${itemId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ completed: !completed })
+      });
+      await fetchChecklist(editId);
+    } catch (error) {
+      console.error('Checklist item güncellenemedi:', error);
+    }
+  };
+
+  const updateChecklistItemText = async (itemId, text) => {
+    // Update local state immediately for better UX
+    setChecklistItems(prev => 
+      prev.map(item => item.id === itemId ? { ...item, text } : item)
+    );
+    
+    // Debounce API call
+    setTimeout(async () => {
+      try {
+        await apiFetch(`/api/checklist/${itemId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ text })
+        });
+      } catch (error) {
+        console.error('Checklist item güncellenemedi:', error);
+        // Revert on error
+        await fetchChecklist(editId);
+      }
+    }, 500);
+  };
+
+  const deleteChecklistItem = async (itemId) => {
+    try {
+      await apiFetch(`/api/checklist/${itemId}`, {
+        method: 'DELETE'
+      });
+      await fetchChecklist(editId);
+    } catch (error) {
+      console.error('Checklist item silinemedi:', error);
+    }
+  };
+
+  const openModal = async (note = null) => {
     if (note) {
       setTitle(note.title);
       setContent(note.content || '');
       setCategoryId(note.category_id || null);
       setEditId(note.id);
+      await fetchChecklist(note.id);
     } else {
       setTitle('');
       setContent('');
       setCategoryId(null);
       setEditId(null);
+      setChecklistItems([]);
     }
     setSaveStatus('');
+    setNewChecklistItem('');
     setShowModal(true);
   };
 
@@ -133,6 +213,8 @@ function NotesSection() {
     setCategoryId(null);
     setEditId(null);
     setSaveStatus('');
+    setChecklistItems([]);
+    setNewChecklistItem('');
   };
 
   const handleDelete = async (id) => {
@@ -331,6 +413,83 @@ function NotesSection() {
                 value={content}
                 onChange={setContent}
               />
+
+              {/* Checklist Section */}
+              <div className="mt-6 border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-lg font-semibold">Yapılacaklar Listesi</h4>
+                </div>
+                
+                {/* Add new checklist item */}
+                {editId && (
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={newChecklistItem}
+                      onChange={(e) => setNewChecklistItem(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addChecklistItem();
+                        }
+                      }}
+                      placeholder="Yeni görev ekle..."
+                      className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={addChecklistItem}
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
+                    >
+                      + Ekle
+                    </button>
+                  </div>
+                )}
+
+                {/* Checklist items */}
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {checklistItems.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-4">
+                      {editId ? 'Henüz görev eklenmemiş. Yeni görev eklemek için yukarıdaki alanı kullanın.' : 'Not kaydedildikten sonra görev ekleyebilirsiniz.'}
+                    </p>
+                  ) : (
+                    checklistItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={item.completed === 1}
+                          onChange={() => toggleChecklistItem(item.id, item.completed === 1)}
+                          className="w-5 h-5 text-blue-500 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) => updateChecklistItemText(item.id, e.target.value)}
+                          onBlur={(e) => {
+                            if (e.target.value.trim() === '') {
+                              deleteChecklistItem(item.id);
+                            }
+                          }}
+                          className={`flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            item.completed === 1 ? 'line-through text-gray-500' : ''
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => deleteChecklistItem(item.id)}
+                          className="text-red-500 hover:text-red-700 px-2"
+                          title="Sil"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
 
               {/* Modal Footer */}
               <div className="flex gap-2 mt-4 justify-end">
