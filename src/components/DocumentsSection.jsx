@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { apiFetch, API_URL } from '../utils/api';
+import { apiFetch, API_URL, getToken } from '../utils/api';
 
 function DocumentsSection() {
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // 0-100
+  const [uploadSpeedKbps, setUploadSpeedKbps] = useState(0);
+  const [uploadEtaSec, setUploadEtaSec] = useState(0);
+  const [uploadFileName, setUploadFileName] = useState('');
 
   useEffect(() => {
     fetchDocuments();
@@ -23,21 +27,72 @@ function DocumentsSection() {
     const file = e.target.files[0];
     if (!file) return;
 
+    setUploadFileName(file.name);
+
     const formData = new FormData();
     formData.append('file', file);
 
     setUploading(true);
+    setUploadProgress(0);
+    setUploadSpeedKbps(0);
+    setUploadEtaSec(0);
+
     try {
-      await apiFetch('/api/documents/upload', {
-        method: 'POST',
-        body: formData
+      // Use XMLHttpRequest to track upload progress
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${API_URL}/api/documents/upload`);
+        const token = getToken();
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
+
+        let lastLoaded = 0;
+        let lastTs = Date.now();
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+
+            const now = Date.now();
+            const deltaBytes = event.loaded - lastLoaded;
+            const deltaMs = now - lastTs || 1;
+            const speedKbps = (deltaBytes / 1024) / (deltaMs / 1000);
+            setUploadSpeedKbps(speedKbps);
+
+            const remainingBytes = event.total - event.loaded;
+            const etaSec = speedKbps > 0 ? Math.ceil((remainingBytes / 1024) / speedKbps) : 0;
+            setUploadEtaSec(etaSec);
+
+            lastLoaded = event.loaded;
+            lastTs = now;
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Upload failed: ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error'));
+
+        xhr.send(formData);
       });
+
       fetchDocuments();
     } catch (error) {
       console.error('Dosya yüklenemedi:', error);
       alert('Dosya yüklenemedi!');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+      setUploadSpeedKbps(0);
+      setUploadEtaSec(0);
+      setUploadFileName('');
+      e.target.value = '';
     }
   };
 
@@ -80,7 +135,20 @@ function DocumentsSection() {
               disabled:opacity-50"
           />
         </label>
-        {uploading && <p className="text-blue-500 mt-2">Yükleniyor...</p>}
+        {uploading && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+            <div className="flex justify-between text-xs text-blue-700 mb-1">
+              <span>{uploadFileName}</span>
+              <span>%{uploadProgress} • {uploadSpeedKbps.toFixed(1)} KB/s • ETA {uploadEtaSec}s</span>
+            </div>
+            <div className="w-full h-2 bg-blue-100 rounded">
+              <div
+                className="h-2 bg-blue-500 rounded"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">

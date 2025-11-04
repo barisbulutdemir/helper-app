@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { apiFetch, API_URL } from '../utils/api';
+import { apiFetch, API_URL, getToken } from '../utils/api';
 
 function PhotoGallery() {
   const [categories, setCategories] = useState([]);
@@ -8,6 +8,10 @@ function PhotoGallery() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [parentCategoryId, setParentCategoryId] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // overall 0-100
+  const [uploadSpeedKbps, setUploadSpeedKbps] = useState(0);
+  const [currentFileName, setCurrentFileName] = useState('');
+  const [uploadInfo, setUploadInfo] = useState({ currentIndex: 0, total: 0, etaSec: 0 });
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [visiblePhotos, setVisiblePhotos] = useState(20);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -70,23 +74,77 @@ function PhotoGallery() {
     }
 
     setUploading(true);
-    try {
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('category_id', selectedCategory);
+    setUploadProgress(0);
+    setUploadSpeedKbps(0);
+    setCurrentFileName('');
+    setUploadInfo({ currentIndex: 0, total: files.length, etaSec: 0 });
 
-        await apiFetch('/api/photos/upload', {
-          method: 'POST',
-          body: formData
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setCurrentFileName(file.name);
+
+        await new Promise((resolve, reject) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('category_id', selectedCategory);
+
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `${API_URL}/api/photos/upload`);
+          const token = getToken();
+          if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          }
+
+          let lastLoaded = 0;
+          let lastTs = Date.now();
+
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const filePercent = event.loaded / event.total; // 0-1
+              const overallPercent = ((i + filePercent) / files.length) * 100;
+              setUploadProgress(Math.round(overallPercent));
+
+              const now = Date.now();
+              const deltaBytes = event.loaded - lastLoaded;
+              const deltaMs = now - lastTs || 1;
+              const speedKbps = (deltaBytes / 1024) / (deltaMs / 1000);
+              setUploadSpeedKbps(speedKbps);
+
+              const remainingFiles = files.length - (i + filePercent);
+              const avgFileSizeKb = file.size / 1024; // rough
+              const etaSec = speedKbps > 0 ? Math.ceil((remainingFiles * avgFileSizeKb) / speedKbps) : 0;
+              setUploadInfo({ currentIndex: i + 1, total: files.length, etaSec });
+
+              lastLoaded = event.loaded;
+              lastTs = now;
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              reject(new Error(`Upload failed: ${xhr.status}`));
+            }
+          };
+          xhr.onerror = () => reject(new Error('Network error'));
+
+          xhr.send(formData);
         });
       }
+
       fetchPhotos(selectedCategory);
     } catch (error) {
       console.error('Fotoğraf yüklenemedi:', error);
       alert('Fotoğraf yüklenemedi!');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+      setUploadSpeedKbps(0);
+      setCurrentFileName('');
+      setUploadInfo({ currentIndex: 0, total: 0, etaSec: 0 });
+      e.target.value = '';
     }
   };
 
@@ -341,12 +399,12 @@ function PhotoGallery() {
                         >
                           ⬇️ İndir ({selectedPhotos.length})
                         </button>
-                      <button
-                        onClick={handleDeleteSelected}
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold"
-                      >
+                        <button
+                          onClick={handleDeleteSelected}
+                          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold"
+                        >
                           🗑️ Sil ({selectedPhotos.length})
-                      </button>
+                        </button>
                       </>
                     )}
                   </div>
@@ -384,7 +442,20 @@ function PhotoGallery() {
                       disabled:opacity-50"
                   />
                 </label>
-                {uploading && <p className="text-green-500 mt-2">Yükleniyor...</p>}
+                {uploading && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                    <div className="flex justify-between text-xs text-green-700 mb-1">
+                      <span>{uploadInfo.currentIndex}/{uploadInfo.total} • {currentFileName}</span>
+                      <span>%{uploadProgress} • {uploadSpeedKbps.toFixed(1)} KB/s • ETA {uploadInfo.etaSec}s</span>
+                    </div>
+                    <div className="w-full h-2 bg-green-100 rounded">
+                      <div
+                        className="h-2 bg-green-500 rounded"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -556,7 +627,7 @@ function PhotoGallery() {
             <form onSubmit={handleCreateCategory} className="flex-1 overflow-auto p-4">
               {parentCategoryId && (
                 <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify_between items-center">
                     <span className="text-sm text-gray-600">
                       Alt kategori: <strong>{categories.find(c => c.id === parentCategoryId)?.name}</strong>
                     </span>
@@ -593,7 +664,7 @@ function PhotoGallery() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
+                  className="flex-1 bg_green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
                 >
                   Kategori Ekle
                 </button>

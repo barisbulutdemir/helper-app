@@ -85,7 +85,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  limits: { fileSize: 200 * 1024 * 1024 } // 200MB limit
 });
 
 // Varsayılan şifre oluştur (ilk çalıştırmada)
@@ -384,12 +384,19 @@ app.get('/api/documents', authenticateToken, (req, res) => {
 app.post('/api/documents/upload', authenticateToken, upload.single('file'), (req, res) => {
   try {
     const file = req.file;
+    console.log('UPLOAD:', {
+      originalname: file?.originalname,
+      mimetype: file?.mimetype,
+      size: file?.size,
+      filename: file?.filename,
+    });
     const result = db.prepare(
       'INSERT INTO documents (filename, original_name, file_path, file_type, file_size) VALUES (?, ?, ?, ?, ?)'
     ).run(file.filename, file.originalname, `/uploads/documents/${file.filename}`, file.mimetype, file.size);
     
     res.json({ id: result.lastInsertRowid, file_path: `/uploads/documents/${file.filename}` });
   } catch (error) {
+    console.error('UPLOAD-ERROR:', error.message, error.stack);
     res.status(500).json({ error: error.message });
   }
 });
