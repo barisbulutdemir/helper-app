@@ -29,3 +29,9 @@ backend/.env
 
 # Environment files
 .env
+
+# Capacitor / Android
+android/
+.capacitor/
+*.apk
+*.aab

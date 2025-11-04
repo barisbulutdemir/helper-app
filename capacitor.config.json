@@ -1,0 +1,9 @@
+{
+  "appId": "com.helperapp.techsupport",
+  "appName": "Tech Support",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
+

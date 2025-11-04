@@ -1,4 +1,26 @@
-const API_URL = import.meta.env.VITE_API_URL || '';
+// Capacitor import (will be undefined in web)
+import { Capacitor } from '@capacitor/core';
+
+// API URL configuration
+// In web: uses VITE_API_URL or empty (relative URLs)
+// In Android: uses VITE_API_URL or default to production server
+const getApiUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  
+  if (envUrl) {
+    return envUrl;
+  }
+  
+  // If running in Capacitor (Android/iOS) and no env URL, use production
+  if (Capacitor.isNativePlatform()) {
+    return 'https://tech.barisbd.tr'; // Production backend URL
+  }
+  
+  // Web: use relative URLs (empty string)
+  return '';
+};
+
+const API_URL = getApiUrl();
 
 // Token'ı localStorage'dan al
 export const getToken = () => {
